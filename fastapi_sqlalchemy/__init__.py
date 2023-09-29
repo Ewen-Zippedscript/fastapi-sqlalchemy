@@ -1,6 +1,11 @@
-from .extensions import SQLAlchemy, db
+from . import context
+from .context import async_enter_contexts, enter_contexts
+from .extensions import SQLAlchemy
 from .middleware import DBSessionMiddleware
 from .types import ModelBase
+
+context.refresh_dbs()
+
 
 __all__ = ["db", "DBSessionMiddleware", "SQLAlchemy"]
 

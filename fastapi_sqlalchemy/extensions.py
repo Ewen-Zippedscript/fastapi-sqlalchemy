@@ -17,7 +17,11 @@ from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_
 from sqlalchemy.orm import Query, Session, declarative_base, sessionmaker
 from sqlalchemy.types import BigInteger
 
-from .exceptions import SessionNotAsync, SessionNotInitialisedError, SQLAlchemyAsyncioMissing
+from .exceptions import (
+    SessionNotAsync,
+    SessionNotInitialisedError,
+    SQLAlchemyAsyncioMissing,
+)
 from .types import ModelBase
 
 try:
@@ -175,7 +179,9 @@ class SQLAlchemy:
         if not self.custom_engine and not self.url:
             raise ValueError("You need to pass a url or a custom_engine parameter.")
         if not self.async_custom_engine and not self.async_url and self.async_:
-            raise ValueError("You need to pass a async_url or a async_custom_engine parameter.")
+            raise ValueError(
+                "You need to pass a async_url or a async_custom_engine parameter."
+            )
         self.engine = self._create_sync_engine()
         self.async_engine = self._create_async_engine()
         self.sync_session_maker = self._make_sync_session_maker()
@@ -183,6 +189,9 @@ class SQLAlchemy:
 
         self.initiated = True
         self.metadata = False
+        from .context import refresh_dbs  # This is to avoid circular imports
+
+        refresh_dbs()
 
     def create_all(self):
         self._Base.metadata.create_all(self.engine)

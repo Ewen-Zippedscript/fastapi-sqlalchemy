@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import inspect
 import logging
+import warnings
 from contextlib import AsyncExitStack, ExitStack
 from typing import Dict, List, Optional, Union
 
@@ -13,25 +15,11 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.types import ASGIApp
 
+from .context import refresh_dbs
 from .exceptions import SQLAlchemyType
 from .extensions import SQLAlchemy
 from .extensions import db as db_
 from .extensions import reset_session, start_session
-
-
-class DBStateMap:
-    def __init__(self):
-        self.dbs: Dict[URL, sessionmaker] = {}
-        self.initialized = False
-
-    def __getitem__(self, item: URL) -> sessionmaker:
-        return self.dbs[item]
-
-    def __setitem__(self, key: URL, value: sessionmaker) -> None:
-        if not self.initialized:
-            self.dbs[key] = value
-        else:
-            raise ValueError("DBStateMap is already initialized")
 
 
 def is_async():
@@ -51,7 +39,6 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
         **options,
     ):
         super().__init__(app)
-        self.state_map = DBStateMap()
         if not (type(db) == list or type(db) == SQLAlchemy) and not db_url:
             raise SQLAlchemyType()
         if db_url and not db:
@@ -67,6 +54,7 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
             self.dbs = db
         for db in self.dbs:
             db.create_all()
+        refresh_dbs()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
         req_async = False
